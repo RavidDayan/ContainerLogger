@@ -1,64 +1,130 @@
-const readline = require("readline");
+const storageLayer = require("./storageLayer");
+const containerLogger = require("./ContainerLogger");
+const yargs = require("yargs");
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-let running = true;
-let action = 0;
-
-const isActionValid = (action) => {
-  if (!isNaN(action)) {
-    if (action > 0 && action <= messages[0].length) {
-      return true;
-    }
-  } else {
-    return false;
+let  logger;
+let storage;
+let serviceStatue=false;
+//functions
+const startService = () => {
+  if(isServiceOn()){
+    storage = new storageLayer();
+    logger = new containerLogger(storageLayer);
+    serviceStatue=true;
+  }
+  else{
+    console.log("service is already running");
   }
 };
-async function getUserInput(message) {
-  return new Promise((resolve) => {
-    rl.question(message, (answer) => {
-      resolve(answer);
+const addContainer = (containerId) => {
+  if(isServiceOn()){
+    let success = logger.attachToContainer(containerId);
+  }
+  else{
+    console.log("service is off")
+  }
+};
+const removeContainer = (containerId) => {
+  if(isServiceOn()){
+    logger.detachContainer(containerId);
+  }
+  else{
+    console.log("service is off")
+  }
+};
+const showContainerLog = (containerId) => {
+  if(isServiceOn()){
+    logger.showContainerLog(containerId);
+  }
+  else{
+    console.log("service is off")
+  }
+};
+const showAllContainers = () => {
+  if(isServiceOn()){
+    logger.getAllRunningContainers().then((result) => {
+      result.forEach((container) => {
+        console.log(`id:${container.id}  name:${container.name}`);
+      });
     });
-  });
-}
-const mainMenu = () => {
-  for (let i = 1; i <= messages[0].length; i++) {
-    console.log(i + "." + messages[0][i - 1]);
+  }
+  else{
+    console.log("service is off")
   }
 };
-const startListening = () => {};
-const addContainer = () => {};
-const removeContainer = () => {};
-const showContainerLog = () => {};
-const showAllContainers = () => {};
-const showListenedContainers = () => {};
-const exit = () => {
-  console.log("Program closing...");
-  running = false;
-  rl.close();
-};
-const messages = [
-  [
-    "Start listening",
-    "Add a new container",
-    "Remove container",
-    "show Containers log",
-    "Exit",
-  ],
-  [startListening, addContainer, removeContainer, showContainerLog, exit],
-];
-const startProgram = async () => {
-  while (running) {
-    mainMenu();
-    action = await getUserInput("please choose action number: ");
-    while (!isActionValid(action)) {
-      action = await getUserInput("please choose valid action number: ");
-    }
-    action = parseInt(action);
-    messages[1][action - 1]();
+const showListenedContainers = () => {
+  if(isServiceOn()){
+    logger.getListenedContainers().then((result) => {
+      result.forEach((container) => {
+        console.log(`id:${container.id}  name:${container.name}`);
+      });
+    });
   }
-};
+  else{
+    console.log("service is off")
+  }
 
-startProgram();
+};
+const exit = () => {serviceStatue=false};
+
+const isServiceOn=()=>{return serviceStatue}
+
+yargs.command({
+  command: "start",
+  describe: "starts the containger logger service",
+  handler: () => {
+    console.log("the service has started");
+    startService();
+  },
+});
+yargs.command({
+  command: "stop",
+  describe: "stops the containger logger service",
+  handler: () => {
+    exit();
+    console.log("the service has stopped");
+  },
+});
+yargs.command({
+  command: "show a",
+  describe: "show all running containers on machine",
+  handler: () => {
+    showAllContainers();
+  },
+});
+yargs.command({
+  command: "show l",
+  describe: "show all listned containers on machine",
+  handler: () => {
+    showListenedContainers();
+  },
+});
+yargs.command({
+  command: "attach <id>",
+  describe: "Listen to container logs by ID",
+  handler: (argv) => {
+    const containerId = argv.id;
+    addContainer(containerId);
+  },
+});
+yargs.command({
+  command: "detach <id>",
+  describe: "Listen to container logs by ID",
+  handler: (argv) => {
+    const containerId = argv.id;
+    removeContainer(containerId);
+    console.log(`Container ${containerId} has stopped being listened to.`);
+  },
+});
+yargs.command({
+  command: "log <id>",
+  describe: "prints all containers logs",
+  handler: (argv) => {
+    const containerId = argv.id;
+    showContainerLog(containerId);
+    console.log(`Container ${containerId} logs`);
+  },
+});
+
+const argv = yargs.argv;
+
