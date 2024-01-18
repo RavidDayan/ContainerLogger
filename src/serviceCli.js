@@ -3,7 +3,7 @@ const yargs = require("yargs");
 const { dbUrl } = require("./config");
 let logger;
 
-let argv = yargs;
+const argv = yargs;
 
 const startService = () => {
   logger = new containerLogger(dbUrl);
@@ -16,11 +16,13 @@ const removeContainer = (containerId) => {
   logger.detachContainer(containerId);
 };
 const showContainerLog = (containerId) => {
-  logger.showContainerLog(containerId);
+  logger.retrieveLogs(containerId);
 };
+//done
 const showAllContainers = () => {
   logger.getAllRunningContainers();
 };
+//done
 const showListenedContainers = () => {
   logger.getListenedContainers();
 };
@@ -46,19 +48,22 @@ yargs.command({
   },
 });
 yargs.command({
-  command: "show a",
+  command: "show-a",
+  aliases: ["a"],
   describe: "show all running containers on machine",
   handler: () => {
     showAllContainers();
   },
 });
 yargs.command({
-  command: "show l",
-  describe: "show all listned containers on machine",
+  command: "show-l",
+  aliases: ["l"],
+  describe: "show all listened containers on machine",
   handler: () => {
     showListenedContainers();
   },
 });
+
 yargs.command({
   command: "attach <id>",
   describe: "Listen to container logs by ID",
@@ -98,7 +103,6 @@ function serviceCli() {
       getUserInput();
     });
   }
-
   getUserInput();
 }
 

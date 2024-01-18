@@ -1,40 +1,22 @@
 const Docker = require("dockerode");
 
 class ContainerLog {
-  static Docker = new Docker();
-
   constructor(containerId, data, err, end, manager) {
     try {
-      this.container = ContainerLog.Docker.getContainer(containerId);
-      doesContainerExist(container.id)
+      this.docker = new Docker();
       this.manager = manager;
       this.id = containerId;
       this.data = data;
       this.err = err;
       this.end = end;
+      this.container = this.docker.getContainer(containerId);
       this.logStream = null;
       this.attachListeners();
     } catch (error) {
-      throw error;
+      console.log(`container with id ${containerId} does not exist, try again`);
     }
   }
-  async doesContainerExist(containerId) {
-    try {
-      let doesExist=false
-      const containers = await this.docker.listContainers({ all: true });
-      containers.forEach((container) => {
-        if (container.id===containerId){
-          doesExist=true;
-        }
-      });
-      if(!doesExist){
-        throw new Error(`container with id ${containerId} does not exist, try again`)
-      }
-      return true;
-    } catch (error) {
-      throw error;
-    }
-  }
+
   processLogMessage(logMessage) {
     const firstNewlineIndex = logMessage.indexOf("\n");
     const secondNewlineIndex = logMessage.indexOf("\n", firstNewlineIndex + 1);

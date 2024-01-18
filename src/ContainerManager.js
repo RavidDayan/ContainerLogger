@@ -82,6 +82,7 @@ class ContainerManager {
   //done
   async attachToContainer(containerId) {
     try {
+      await this.doesContainerExist(containerId);
       const container = new Container(
         containerId,
         this.logHandler,
@@ -90,12 +91,34 @@ class ContainerManager {
         this
       );
       await this.storage.addContainer(containerId);
+      console.log(93);
       this.addContainer(container);
       console.log(
         `\ncontainer ${containerId} \n has been successfully attached`
       );
     } catch (error) {
       console.log(`\ncould not attach container ${containerId}:\n${error}`);
+    }
+  }
+  async doesContainerExist(containerId) {
+    try {
+      let doesExist = false;
+      const containers = await this.docker.listContainers({ all: true });
+      console.log(34);
+      containers.forEach((container) => {
+        if (container.Id === containerId) {
+          doesExist = true;
+        }
+      });
+      if (!doesExist) {
+        const error = new Error(
+          `container with id ${containerId} does not exist, try again`
+        );
+        throw error;
+      }
+      return true;
+    } catch (error) {
+      throw error;
     }
   }
   async detachContainer(containerId) {
@@ -221,7 +244,7 @@ class ContainerManager {
   async getListenedContainers() {
     try {
       const containers = await this.docker.listContainers({ all: true });
-      const containerInfoList = containers.map((container) => {
+      let containerInfoList = containers.map((container) => {
         if (this.hasContainer(container)) {
           return { id: container.Id, name: container.Names[0] };
         }
@@ -229,7 +252,7 @@ class ContainerManager {
       containerInfoList = containerInfoList.filter(
         (element) => element != undefined
       );
-      printContainers(containerInfoList);
+      this.printContainers(containerInfoList);
     } catch (error) {
       console.log(`could not get all listened containers:${error}\n`);
     }
@@ -238,7 +261,7 @@ class ContainerManager {
   //print containers by attachment,id,name
   printContainers(containers) {
     let headerSpace = " ".repeat(64 - 15);
-    console.log(`ATTACHED  CONTAINER ID ${headerSpace}    CONTAINER NAME`);
+    console.log(`\nATTACHED  CONTAINER ID ${headerSpace}    CONTAINER NAME`);
     containers.forEach((container) => {
       let attachSpace = " ".repeat(10 - container.att.toString().length);
       let att = container.att;
@@ -248,12 +271,11 @@ class ContainerManager {
     });
   }
 }
-// main=async ()=>{
-//   let logger=new ContainerManager(dbUrl);
+// main = async () => {
+//   let logger = new ContainerManager(dbUrl);
 //   await logger.startService();
-//   logger.getAllRunningContainers();
-
-// }
+//   logger.attachToContainer("987897");
+// };
 // main();
 
 module.exports = ContainerManager;

@@ -80,7 +80,6 @@ class StorageLayer {
       });
       await LogModel.insertMany(logDocuments, { ordered: false });
     } catch (error) {
-      throw error;//handled by ContainerManager.addLogsToDb
     }
   }
   async getLogs(containerId, startDate, endDate) {
