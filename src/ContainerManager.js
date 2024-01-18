@@ -91,7 +91,6 @@ class ContainerManager {
         this
       );
       await this.storage.addContainer(containerId);
-      console.log(93);
       this.addContainer(container);
       console.log(
         `\ncontainer ${containerId} \n has been successfully attached`
@@ -104,7 +103,6 @@ class ContainerManager {
     try {
       let doesExist = false;
       const containers = await this.docker.listContainers({ all: true });
-      console.log(34);
       containers.forEach((container) => {
         if (container.Id === containerId) {
           doesExist = true;
@@ -290,12 +288,20 @@ class ContainerManager {
 main = async () => {
   let logger = new ContainerManager(dbUrl);
   await logger.startService();
+
   await logger.attachToContainer(
     "c6d8da6c0e4b5bf622a71a5b8752d6db5f1deaa2e66e9aad333561898746ecbe"
   );
-  logger.retrieveLogs(
-    "c6d8da6c0e4b5bf622a71a5b8752d6db5f1deaa2e66e9aad333561898746ecbe"
+  await logger.attachToContainer(
+    "9fc3e299a03d6a83f70618269215b26936a02057dbabe1367f59e9851227c5d1"
   );
+  await logger.attachToContainer(
+    "00faf945b4393e7f89be161bcbca7369ce62faa7bb7ee05bf4c18c7d518d03b0"
+  );
+  
+  setTimeout(()=>{
+    logger.containers.forEach(async item=>await logger.retrieveLogs(item.id))
+  },10000);
 };
 main();
 
