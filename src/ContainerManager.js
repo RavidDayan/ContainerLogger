@@ -156,10 +156,26 @@ class ContainerManager {
     }
   };
   async retrieveLogs(containerId, startDate, endDate) {
+    await this.addLogsToDb();
     const logs = await this.storage.getLogs(containerId, startDate, endDate);
-    console.log(`Logs for container ${containerId}:`);
-    console.log(logs);
+    this.printLogs(containerId, logs);
   }
+  printLogs(containerId, logs) {
+    let headerSpace = " ".repeat(15);
+    console.log(`\nLogs for container ${containerId}:`);
+    console.log(`\nDATE ${headerSpace} LOG `);
+    logs.forEach((log) => {
+      let timeStamp = this.formatTimestamp(log.timestamp);
+      let message = log.log.trim();;
+      console.log(`${timeStamp}  ${message}`);
+    });
+  }
+  formatTimestamp(timestamp) {
+    const isoFormat = timestamp.toISOString();
+    const formattedDate = isoFormat.replace('T', ' ').replace(/\.\d{3}Z$/, '');
+    return formattedDate;
+  }
+
   removeSavedLogs(remove, removedFrom) {
     remove.forEach((log) => {
       for (let i = removedFrom.length - 1; i >= 0; i--) {
@@ -271,11 +287,16 @@ class ContainerManager {
     });
   }
 }
-// main = async () => {
-//   let logger = new ContainerManager(dbUrl);
-//   await logger.startService();
-//   logger.attachToContainer("987897");
-// };
-// main();
+main = async () => {
+  let logger = new ContainerManager(dbUrl);
+  await logger.startService();
+  await logger.attachToContainer(
+    "c6d8da6c0e4b5bf622a71a5b8752d6db5f1deaa2e66e9aad333561898746ecbe"
+  );
+  logger.retrieveLogs(
+    "c6d8da6c0e4b5bf622a71a5b8752d6db5f1deaa2e66e9aad333561898746ecbe"
+  );
+};
+main();
 
 module.exports = ContainerManager;

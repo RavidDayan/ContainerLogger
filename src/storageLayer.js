@@ -94,6 +94,7 @@ class StorageLayer {
         containerId: containerId,
         timestamp: { $gte: startDate, $lte: endDate },
       });
+      console.log(containerLogs);
       return containerLogs;
     } catch (error) {
       throw error//handled by ContainerManager.retrieveLogs;

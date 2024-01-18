@@ -16,30 +16,24 @@ class ContainerLog {
       console.log(`container with id ${containerId} does not exist, try again`);
     }
   }
-
+  removeNonPrintableChars(inputString) {
+    return inputString.replace(/[^\x20-\x7E]/g, "");
+  }
   processLogMessage(logMessage) {
-    const firstNewlineIndex = logMessage.indexOf("\n");
-    const secondNewlineIndex = logMessage.indexOf("\n", firstNewlineIndex + 1);
-    if (firstNewlineIndex !== -1 && secondNewlineIndex !== -1) {
-      const extractedMessage = logMessage
-        .substring(firstNewlineIndex + 1, secondNewlineIndex)
-        .trim();
-      return extractedMessage;
-    }
-    return logMessage;
+    return this.removeNonPrintableChars(logMessage);
   }
   //wrapper functions to pass the container id to the event listner
   idDataWrapper = (data) => {
-    // const logMessage = this.processLogMessage(data);
-    this.data(this.id, new Date().getTime(), data);
+    const logMessage = this.processLogMessage(data);
+    this.data(this.id, new Date().getTime(), logMessage);
   };
   idErrWrapper = (data) => {
-    // const logMessage = this.processLogMessage(data);
-    this.err(this.id, new Date().getTime(), data);
+    const logMessage = this.processLogMessage(data);
+    this.err(this.id, new Date().getTime(), logMessage);
   };
   idEndWrapper = (data) => {
-    // const logMessage = this.processLogMessage(data);
-    this.end(this.id, new Date().getTime(), data);
+    const logMessage = this.processLogMessage(data);
+    this.end(this.id, new Date().getTime(), logMessage);
   };
   async attachListeners() {
     const currentTime = Math.floor(new Date().getTime() / 1000); // UNIX timestamp in seconds
