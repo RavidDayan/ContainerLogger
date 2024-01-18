@@ -1,34 +1,46 @@
 const Docker = require("dockerode");
 const Storage = require("./storageLayer");
-const { batchLimit,timeLimit dbUrl } = require("./config");
+const { batchLimit, timeLimit, dbUrl } = require("./config");
 const Container = require("./containerLog");
 const Log = require("./log");
 
 class ContainerManager {
   constructor(dbUrlConnection) {
     this.docker = new Docker(); // Instantiate Docker instance
-    this.dbUrlConnection = dbUrlConnection;
-    // this.Storage=null;
+    this.storage = new Storage(dbUrlConnection);
     this.containers = [];
     this.logsBatch = [];
-    this.service;
-    this.timeLimit=0;
-    startTimeLimitCounter();
+    this.service = false;
+    this.timeLimit = 0;
+  }
+
+  serviceStatueWrapper(func) {
+    if (service) {
+      func();
+    } else {
+      console.log("service is offline");
+    }
+    return service;
   }
   //counts up to the limit until next batch sending
-  startTimeLimitCounter() {
-    this.intervalId = setInterval(() => {
+  //done
+  stopCounter() {
+    clearInterval(this.intervalId);
+    this.timeLimit = 0;
+  }
+  startCounter() {
+    this.intervalId = setInterval(async () => {
       this.timeLimit++;
+
       if (this.timeLimit > timeLimit) {
-        sendLogsToStorageLayer();
-        clearInterval(this.intervalId);
-        this.timeLimit=0;
+        this.stopCounter();
+        await this.addLogsToDb();
         this.startCounter();
       }
     }, 1000);
   }
-
-  //add container to containers returns true if added else false
+  //basic add/remove/pop/has ,compare by container id.
+  //done
   addContainer(container) {
     this.containers.forEach((stored) => {
       if (container.id === stored.id) {
@@ -38,7 +50,6 @@ class ContainerManager {
     this.containers.push(container);
     return true;
   }
-  //removes container from containers returns true if removed else false
   removeContainer(container) {
     for (let i = 0; i < this.containers.length; i++) {
       if (container.id === this.containers[i].id) {
@@ -48,7 +59,6 @@ class ContainerManager {
     }
     return false;
   }
-  //pops container from containers returns container if exists else false
   popContainer(container) {
     for (let i = 0; i < this.containers.length; i++) {
       if (container.id === this.containers[i].id) {
@@ -61,128 +71,189 @@ class ContainerManager {
   }
   hasContainer(container) {
     for (let i = 0; i < this.containers.length; i++) {
-      let smallerId = container.Id;
-      if (smallerId === this.containers[i].id) {
+      if (container.Id === this.containers[i].id) {
         return true;
       }
     }
     return false;
   }
-  // Attach to a container
-  attachToContainer(containerId) {
-    //get Container
-    const container = new Container(
-      containerId,
-      this.logHandler,
-      this.logHandler,
-      this.logHandler,
-      this
-    );
-    return this.addContainer(container);
+
+  // Attach/detach  to a container and track it
+  //done
+  async attachToContainer(containerId) {
+    try {
+      const container = new Container(
+        containerId,
+        this.logHandler,
+        this.logHandler,
+        this.logHandler,
+        this
+      );
+      await this.storage.addContainer(containerId);
+      this.addContainer(container);
+      console.log(
+        `\ncontainer ${containerId} \n has been successfully attached`
+      );
+    } catch (error) {
+      console.log(`\ncould not attach container ${containerId}:\n${error}`);
+    }
   }
-  detachContainer(containerId) {
-    const detachedContainer = this.popContainer(
-      this.docker.getContainer(containerId)
-    );
-    if (detachedContainer) {
+  async detachContainer(containerId) {
+    try {
+      await this.storage.removeContainers([containerId]);
+      const detachedContainer = this.popContainer(
+        this.docker.getContainer(containerId)
+      );
       detachedContainer.removeListeners();
-      return true;
-    } else {
-      return false;
+      console.log(`container ${containerId} \n has been successfully detached`);
+    } catch (error) {
+      console.log(`could not detach container ${containerId}:\n${error}\n`);
     }
   }
 
   //event listeners for logs
+  //done
   logHandler = (containerId, timeStamp, data) => {
     const logObject = new Log(containerId, timeStamp, data);
     this.logsBatch.push(logObject);
     if (this.logsBatch.length > batchLimit) {
+      this.addLogsToDb();
     }
   };
-  sendLogsToStorageLayer = () => {
-    const storage = new Storage(dbUrlConnection);
-    if (storage.connectDb()) {
+
+  //add and remove items from database
+  addLogsToDb = async () => {
+    try {
+      let currentBatch = [...this.logsBatch];
+      let outcome = await this.storage.addLogs(currentBatch);
+      this.removeSavedLogs(currentBatch, this.logsBatch);
+      return outcome;
+    } catch (error) {
+      console.log(`\n could not store logs :\n${error}`);
     }
-    storage.disconnectDb();
   };
-  // start the logging service
-  startService() {
-    // // Check if the service is already running
-    // if (this.storage.serviceOn()) {
-    //   console.log('Logging service is already running.');
-    //   return false;
-    // }
-
-    // Start the service in the storage layer
-    // this.storage.startService();
-    console.log("Logging service started.");
-    return true;
-  }
-  // Stop the logging service
-  stopService() {
-    // Remove event listeners from all containers in the set
-    this.containers.forEach((containerInfo) => {
-      const container = this.docker.getContainer(containerInfo.containerId);
-
-      // Remove all event listeners for the 'data' and 'end' events
-      container.removeAllListeners("data");
-      container.removeAllListeners("end");
-    });
-
-    // Stop the service in the storage layer
-    this.storage.stopService();
-    console.log("Logging service stopped.");
-    return true;
-  }
-
-  sendLogs() {}
-  // Retrieve logs for a container
-  retrieveLogs(containerId) {
-    const logs = this.storage.getLogs(containerId);
+  async retrieveLogs(containerId, startDate, endDate) {
+    const logs = await this.storage.getLogs(containerId, startDate, endDate);
     console.log(`Logs for container ${containerId}:`);
     console.log(logs);
   }
-
-  // Get a list of all running containers
-  async getAllRunningContainers() {
-    const containers = await this.docker.listContainers({ all: true });
-    const containerInfoList = containers.map((container) => {
-      return { id: container.Id, name: container.Names[0] };
-    });
-    return containerInfoList;
-  }
-
-  // Get a list of containers currently being listened to
-  async getListenedContainers() {
-    const containers = await this.docker.listContainers({ all: true });
-    const containerInfoList = containers.map((container) => {
-      if (this.hasContainer(container)) {
-        return { id: container.Id, name: container.Names[0] };
+  removeSavedLogs(remove, removedFrom) {
+    remove.forEach((log) => {
+      for (let i = removedFrom.length - 1; i >= 0; i--) {
+        if (
+          removedFrom[i].containerId === log.containerId &&
+          removedFrom[i].log === log.log &&
+          removedFrom[i].timeStamp === log.timeStamp
+        ) {
+          removedFrom.splice(i, 1);
+        }
       }
     });
-    return containerInfoList.filter((element) => element != undefined);
+  }
+
+  // start/stop logging service
+  //need to add a crash fix option
+  //need to use trycatch clause
+  async startService() {
+    // if (this.service) {
+    //   console.log("service is already running");
+    // }
+    // if (await this.storage.getServiceState()) {
+    //   console.log(
+    //     "it seems the service did not end properly,would you like to fix it(Y/N)?"
+    //   );
+    //   //fix crashlogic
+    // } else {
+    await this.storage.connectDb();
+    await this.storage.setServiceState(true);
+    this.startCounter();
+    console.log("service is running");
+    // }
+  }
+  //done
+  async stopService() {
+    try {
+      //stop timelimit to add logs to db counter
+      this.stopCounter();
+      //remove all listeners from containers
+      this.containers.forEach((container) => {
+        container.removeListeners();
+      });
+      //send all remaining logs to database
+      await this.addLogsToDb();
+      //remove all listened containers from db
+      let containersId = this.containers.map((container) => {
+        return container.id;
+      });
+      await this.storage.removeContainers(containersId);
+      //set service to off
+      await this.storage.setServiceState(false);
+      //disconnect from database
+      this.storage.disconnectDb();
+      //discard listened containers
+      this.containers = [];
+      this.service = false;
+      console.log("service is off");
+    } catch (error) {
+      console.log(`service stop failed: ${error}`);
+    }
+    return true;
+  }
+
+  // Get a list of all running containers//need to print the containers nicely
+  async getAllRunningContainers() {
+    try {
+      const containers = await this.docker.listContainers({ all: true });
+      let containerInfoList = containers.map((container) => {
+        if (this.hasContainer(container)) {
+          return { att: true, id: container.Id, name: container.Names[0] };
+        } else {
+          return { att: false, id: container.Id, name: container.Names[0] };
+        }
+      });
+      this.printContainers(containerInfoList);
+    } catch (error) {
+      console.log(`\n could not get all running containers\n:${error}\n`);
+    }
+  }
+
+  // Get a list of containers currently being listened //need to print the containers nicely
+  async getListenedContainers() {
+    try {
+      const containers = await this.docker.listContainers({ all: true });
+      const containerInfoList = containers.map((container) => {
+        if (this.hasContainer(container)) {
+          return { id: container.Id, name: container.Names[0] };
+        }
+      });
+      containerInfoList = containerInfoList.filter(
+        (element) => element != undefined
+      );
+      printContainers(containerInfoList);
+    } catch (error) {
+      console.log(`could not get all listened containers:${error}\n`);
+    }
+  }
+
+  //print containers by attachment,id,name
+  printContainers(containers) {
+    let headerSpace = " ".repeat(64 - 15);
+    console.log(`ATTACHED  CONTAINER ID ${headerSpace}    CONTAINER NAME`);
+    containers.forEach((container) => {
+      let attachSpace = " ".repeat(10 - container.att.toString().length);
+      let att = container.att;
+      let id = container.id;
+      let name = container.name.substring(1);
+      console.log(`${att}${attachSpace}${id}  ${name}`);
+    });
   }
 }
+// main=async ()=>{
+//   let logger=new ContainerManager(dbUrl);
+//   await logger.startService();
+//   logger.getAllRunningContainers();
+
+// }
+// main();
 
 module.exports = ContainerManager;
-async function main() {
-  logger = new ContainerManager(dbUrl);
-
-  logger.attachToContainer(
-    "49ad76a17ceb8427e6b1c9da74fa6a91f6348690a8a957e09ff22b6b80a65041"
-  );
-  setTimeout(async () => {
-    console.log(await logger.getListenedContainers());
-  }, 4000);
-  setTimeout(() => {
-    console.log("starting detach");
-    logger.detachContainer(
-      "49ad76a17ceb8427e6b1c9da74fa6a91f6348690a8a957e09ff22b6b80a65041"
-    );
-  }, 5000);
-  setTimeout(() => {
-    console.log(logger.logsBatch);
-  }, 7000);
-}
-
-main();

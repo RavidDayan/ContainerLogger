@@ -4,14 +4,36 @@ class ContainerLog {
   static Docker = new Docker();
 
   constructor(containerId, data, err, end, manager) {
-    this.container = ContainerLog.Docker.getContainer(containerId);
-    this.manager = manager;
-    this.id = containerId;
-    this.data = data;
-    this.err = err;
-    this.end = end;
-    this.logStream = null;
-    this.attachListeners();
+    try {
+      this.container = ContainerLog.Docker.getContainer(containerId);
+      doesContainerExist(container.id)
+      this.manager = manager;
+      this.id = containerId;
+      this.data = data;
+      this.err = err;
+      this.end = end;
+      this.logStream = null;
+      this.attachListeners();
+    } catch (error) {
+      throw error;
+    }
+  }
+  async doesContainerExist(containerId) {
+    try {
+      let doesExist=false
+      const containers = await this.docker.listContainers({ all: true });
+      containers.forEach((container) => {
+        if (container.id===containerId){
+          doesExist=true;
+        }
+      });
+      if(!doesExist){
+        throw new Error(`container with id ${containerId} does not exist, try again`)
+      }
+      return true;
+    } catch (error) {
+      throw error;
+    }
   }
   processLogMessage(logMessage) {
     const firstNewlineIndex = logMessage.indexOf("\n");
@@ -26,16 +48,16 @@ class ContainerLog {
   }
   //wrapper functions to pass the container id to the event listner
   idDataWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.data(this.id, new Date().getTime(), logMessage);
+    // const logMessage = this.processLogMessage(data);
+    this.data(this.id, new Date().getTime(), data);
   };
   idErrWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.err(this.id, new Date().getTime(), logMessage);
+    // const logMessage = this.processLogMessage(data);
+    this.err(this.id, new Date().getTime(), data);
   };
   idEndWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.end(this.id, new Date().getTime(), logMessage);
+    // const logMessage = this.processLogMessage(data);
+    this.end(this.id, new Date().getTime(), data);
   };
   async attachListeners() {
     const currentTime = Math.floor(new Date().getTime() / 1000); // UNIX timestamp in seconds
@@ -47,8 +69,8 @@ class ContainerLog {
     });
     stream.setEncoding("utf8");
     stream.on("data", this.idDataWrapper);
-    stream.on("error", this.err);
-    stream.on("end", this.end);
+    stream.on("error", this.idErrWrapper);
+    stream.on("end", this.idEndWrapper);
     this.logStream = stream;
   }
   removeListeners() {

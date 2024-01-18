@@ -1,73 +1,33 @@
-const storageLayer = require("./storageLayer");
-const containerLogger = require("./ContainerLogger");
+const containerLogger = require("./ContainerManager");
 const yargs = require("yargs");
+const { dbUrl } = require("./config");
+let logger;
 
-let  logger;
-let storage;
-let serviceStatue=false;
-//functions
+let argv = yargs;
+
 const startService = () => {
-  if(isServiceOn()){
-    storage = new storageLayer();
-    logger = new containerLogger(storageLayer);
-    serviceStatue=true;
-  }
-  else{
-    console.log("service is already running");
-  }
+  logger = new containerLogger(dbUrl);
+  logger.startService();
 };
 const addContainer = (containerId) => {
-  if(isServiceOn()){
-    let success = logger.attachToContainer(containerId);
-  }
-  else{
-    console.log("service is off")
-  }
+  logger.attachToContainer(containerId);
 };
 const removeContainer = (containerId) => {
-  if(isServiceOn()){
-    logger.detachContainer(containerId);
-  }
-  else{
-    console.log("service is off")
-  }
+  logger.detachContainer(containerId);
 };
 const showContainerLog = (containerId) => {
-  if(isServiceOn()){
-    logger.showContainerLog(containerId);
-  }
-  else{
-    console.log("service is off")
-  }
+  logger.showContainerLog(containerId);
 };
 const showAllContainers = () => {
-  if(isServiceOn()){
-    logger.getAllRunningContainers().then((result) => {
-      result.forEach((container) => {
-        console.log(`id:${container.id}  name:${container.name}`);
-      });
-    });
-  }
-  else{
-    console.log("service is off")
-  }
+  logger.getAllRunningContainers();
 };
 const showListenedContainers = () => {
-  if(isServiceOn()){
-    logger.getListenedContainers().then((result) => {
-      result.forEach((container) => {
-        console.log(`id:${container.id}  name:${container.name}`);
-      });
-    });
-  }
-  else{
-    console.log("service is off")
-  }
-
+  logger.getListenedContainers();
 };
-const exit = () => {serviceStatue=false};
-
-const isServiceOn=()=>{return serviceStatue}
+const exit = async () => {
+  await logger.stopService();
+  process.exit();
+};
 
 yargs.command({
   command: "start",
@@ -126,5 +86,20 @@ yargs.command({
   },
 });
 
-const argv = yargs.argv;
+function serviceCli() {
+  console.log(
+    'Welcome to container logger service! Type a command or "exit" to quit.'
+  );
+  function getUserInput() {
+    process.stdout.write("> ");
+    process.stdin.once("data", (input) => {
+      let command = input.toString().trim();
+      yargs.parse(command);
+      getUserInput();
+    });
+  }
 
+  getUserInput();
+}
+
+serviceCli();

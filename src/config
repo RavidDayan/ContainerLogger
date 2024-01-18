@@ -1,3 +1,5 @@
-const batchLimit=10;
-const dbUrl="mongodb+srv://root:root@containerlogs.hspe8r3.mongodb.net/Logs?retryWrites=true&w=majority"
-module.exports={batchLimit,dbUrl}
+const batchLimit = 50;
+const dbUrl =
+  "mongodb+srv://root:root@containerlogs.hspe8r3.mongodb.net/Logs?retryWrites=true&w=majority";
+  
+module.exports = { batchLimit, dbUrl };

@@ -1,8 +1,8 @@
 
 class Log{
-    constructor(containerId,date,log){
+    constructor(containerId,timestamp,log){
         this.containerId=containerId;
-        this.date=date;
+        this.timestamp=timestamp;
         this.log=log;
     }
 }
