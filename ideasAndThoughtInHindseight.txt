@@ -1,0 +1,14 @@
+hey there, after i finished the task here are some thoughts i have that i didnt manage to implement on time or didnt think of:
+
+1.break container manager into smaller modules for easier reading/managing :
+  a.timestamp module-handle all the converts of time stamps and checking of formatTimestamp
+  b.printing module-handle all printing of logs and containers.
+2.handle alltimes stamps with a dedicated library(most likely there is one).
+3.handle the errors more gracefully, im sure if i had more time some errors would be better 
+  to deal with on the spot than to throw upwards and print that the operation is unachievable
+4.manage a multi container manager system,as of know i implented a "singelton" to check if there was a crash.
+  but it should of supported multi mangers instead that each manager logs for diffrent reasons.
+  ofcourse containers and logs will belong to a containermanager to avoid confilicts.
+5.ask the user if he wants to fix the crash and if so up to what time does he want to log each container.
+6.add more functionabilty to the container manager:start/stop/restart containers, add an option to choose 
+  when to start logging a container.
