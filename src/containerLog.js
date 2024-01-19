@@ -44,10 +44,9 @@ class ContainerLog {
   };
   async attachListeners(since) {
     if (since === undefined) {
-      since = Math.floor(new Date().getTime()/1000);
-    }
-    else{
-      since =new Date(since).getTime()/1000;
+      since = new Date().getTime() / 1000;
+    } else {
+      since = new Date(since).getTime() / 1000;
     }
     let stream = await this.container.logs({
       follow: true,

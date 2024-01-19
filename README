@@ -1,0 +1,30 @@
+WELCOME TO THE CONTAINER LOGGER SERVICE
+
+INTRO:
+this service logger can track logs of runinig containers and store them.
+the logs can be looked up by dates and you can also see which containers your are tracking.
+incase of crash the service knows how to retrach the containers that it listned to and recover the missed logs.
+
+HOW TO RUN DEMO:
+1.install docker and node.js on pc
+2.download repo to pc
+3.terminal: ./ContainerLogger npm   install                //install dependencys
+4.terminal: ./ContainerLogger/demo  chmod +x demoScript.sh //make script runnable
+5.terminal: ./ContainerLogger/demo  ./demoScript.sh        //execute script
+6.terminal: ./ContainerLogger/src   node serviceCli.js     //start the service
+7.twiking config file to change constants/db pathway(only mongodb paths)
+
+SERVICE LOGGER HELP(press -help while in service to see options):
+exit - Stops the container logger service
+show-a - Show all running containers on machine
+show-l - Show all listened containers on machine
+attach <id> - Listen to container logs by ID
+detach <id> - Stop listening to container logs by ID
+log <id> [startDate] [endDate] - Print container logs by date
+
+Log command usage:
+---------------------
+log <id> - Print all logs for the specified container ID from the beginning.
+log <id> <startDate> - Print logs for the specified container ID from the provided start date to the current date.
+log <id> <startDate> <endDate> - Print logs for the specified container ID within the provided date range.
+---------------------

@@ -115,13 +115,15 @@ class StorageLayer {
     try {
       let containerLogs = await LogModel.find({
         containerId: containerId,
-      }).exec()
-      containerLogs=containerLogs.map((log)=>{
-         if(log.timestamp>=startDate && log.timestamp<=endDate){
+      }).exec();
+      containerLogs = containerLogs.map((log) => {
+        if (log.timestamp >= startDate && log.timestamp <= endDate) {
           return log;
-         }
-      })
-      containerLogs=containerLogs.filter((log)=>{return (log!=undefined)});
+        }
+      });
+      containerLogs = containerLogs.filter((log) => {
+        return log != undefined;
+      });
       return containerLogs;
     } catch (error) {
       console.log(error); //handled by ContainerManager.retrieveLogs;

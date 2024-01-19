@@ -25,25 +25,48 @@ const argv = yargs;
 // Handle help event exiting
 yargs.wrap(null).exitProcess(false);
 
-
 const addContainer = (containerId) => {
-  logger.attachToContainer(containerId);
+  if (logger.service) {
+    logger.attachToContainer(containerId);
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 const removeContainer = (containerId) => {
-  logger.detachContainer(containerId);
+  if (logger.service) {
+    logger.detachContainer(containerId);
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 const showContainerLog = (containerId, startDate, endDate) => {
-  logger.retrieveLogs(containerId, startDate, endDate);
+  if (logger.service) {
+    logger.retrieveLogs(containerId, startDate, endDate);
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 const showAllContainers = () => {
-  logger.getAllRunningContainers();
+  if (logger.service) {
+    logger.getAllRunningContainers();
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 const showListenedContainers = () => {
-  logger.getListenedContainers();
+  if (logger.service) {
+    logger.getListenedContainers();
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 const exit = async () => {
-  await logger.stopService();
-  process.exit();
+  if (logger.service) {
+    await logger.stopService();
+    process.exit();
+  } else {
+    console.log("\nservice is not ready yet, please wait\n");
+  }
 };
 
 // yargs.command({
@@ -93,7 +116,6 @@ yargs.command({
   handler: (argv) => {
     const containerId = argv.id;
     removeContainer(containerId);
-    console.log(`Container ${containerId} has stopped being listened to.`);
   },
 });
 yargs.command({
@@ -109,11 +131,10 @@ yargs.command({
 });
 
 async function serviceCli() {
-
   logger = new containerLogger();
   await logger.startService();
   console.log(
-    'Welcome to container logger service! Type a command or "exit" to quit.'
+    '\nWelcome to container logger service! Type a command or "exit" to quit.\n'
   );
   function getUserInput() {
     process.stdout.write("> ");

@@ -13,8 +13,8 @@ class ContainerManager {
     this.service = false;
     this.timeLimit = 0;
   }
+
   //timer limit counter for log sending to db
-  //done
   stopCounter() {
     clearInterval(this.intervalId);
     this.timeLimit = 0;
@@ -32,7 +32,6 @@ class ContainerManager {
     }, 1000);
   }
   //basic add/remove/pop/has ,compare by container id.
-  //done
   addContainer(container) {
     this.containers.forEach((stored) => {
       if (container.id === stored.id) {
@@ -69,28 +68,31 @@ class ContainerManager {
     }
     return false;
   }
-  // Attach/detach  to a container and track it
-  //done
+  // Attach/detach  to a container and get logs
   async attachToContainer(containerId, since) {
     try {
-      if (this.service) {
-        await this.doesContainerExist(containerId); //check if container with the id exists
-        const container = new Container( //create new container
+      await this.doesContainerExist(containerId); //check if container with the id exists
+      const container = new Container( //create new container
+        containerId,
+        this.logHandler,
+        this.logHandler,
+        this.logHandler,
+        this,
+        since
+      );
+      await this.storage.addContainer(containerId); //add id to listned containers
+      this.logsBatch.push(
+        new Log(
           containerId,
-          this.logHandler,
-          this.logHandler,
-          this.logHandler,
-          this,
-          since
-        );
-        await this.storage.addContainer(containerId); //add id to listned containers
-        this.addContainer(container); //add refrence to managers container array
-        console.log(
-          `\ncontainer ${containerId} \n has been successfully attached\n`
-        );
-      } else {
-        throw new Error("service is not ready yet");
-      }
+          new Date().getTime(),
+          `started listening to container ${containerId}`
+        )
+      );
+      this.addLogsToDb();
+      this.addContainer(container); //add refrence to managers container array
+      console.log(
+        `\ncontainer ${containerId} \n has been successfully attached\n`
+      );
     } catch (error) {
       console.log(`\ncould not attach container ${containerId}:\n${error}\n`);
     }
@@ -164,6 +166,7 @@ class ContainerManager {
       );
     }
   }
+  //convert iso timestamp to unixtimestamp
   convertToUnixTimeStamp(time, indicator) {
     if (indicator === "start" && time === undefined) {
       return 0;
@@ -205,6 +208,7 @@ class ContainerManager {
       console.log(`${timeStamp}  ${message}`);
     });
   }
+  //convert unix timestamp to iso
   formatTimestamp(timestamp) {
     const isoFormat = new Date(timestamp).toISOString();
     const formattedDate = isoFormat.replace("T", " ").replace(/\.\d{3}Z$/, "");
@@ -231,6 +235,9 @@ class ContainerManager {
   async startService() {
     await this.storage.connectDb();
     if (await this.storage.getServiceState()) {
+      console.log(
+        "\nit seems like the service has not shut down properly,retrieving running containers and recovring missed logs\n"
+      );
       await this.fixServiceCrash();
     }
     await this.storage.setServiceState(true);
@@ -272,11 +279,15 @@ class ContainerManager {
       runningContainers.forEach(async (container) => {
         const timestamp = await this.storage.getRecentLogDate(
           container.containerId
-        ); //get the most recent logdate of each one
+        );
+        if (timestamp == null) {
+          timestamp.timestamp = new Date().getTime();
+        }
+        //get the most recent logdate of each one
         await this.storage.removeContainers([container.containerId]); //remove the container from db
         await this.attachToContainer(
           container.containerId,
-          timestamp.timestamp + 1000
+          timestamp.timestamp + 1001
         ); //make new container and reattach with the next log
       });
     } catch (error) {
