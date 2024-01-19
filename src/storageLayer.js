@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 const { ContainerModel, LogModel, ManagerModel } = require("./models");
-
+const { dbPathway } = require("./config");
 class StorageLayer {
-  constructor(urlConnection) {
-    this.urlConnection = urlConnection;
+  constructor() {
+    this.urlConnection = dbPathway;
     this.Connection = mongoose;
     this.isConnected = false;
   }
@@ -58,45 +58,73 @@ class StorageLayer {
       throw error; //handled by ContainerManagaer.attachToContainer
     }
   }
+  async getContainers() {
+    try {
+      return await ContainerModel.find(); //return all containers
+    } catch (error) {
+      throw error;
+    }
+  }
+  //gets a array of container id and removes them one by one from db
   async removeContainers(containers) {
-    try{
-      await containers.forEach(containerId => {
-        ContainerModel.deleteOne({containerId:containerId})
-     });
+    try {
+      containers.forEach(async (containerId) => {
+        await ContainerModel.deleteOne({ containerId: containerId });
+      });
+    } catch (error) {
+      throw error; //handles by ContainerManager.stopservice/removeContainer
     }
-    catch(error){
-      throw error;//handles by ContainerManager.stopservice/removeContainer
+  }
+  async getRecentLogDate(countainerId) {
+    try {
+      const timestamp = await LogModel.findOne({
+        containerId: countainerId,
+      }).sort({ timestamp: -1 });
+      return timestamp;
+    } catch (error) {
+      throw error;
     }
+  }
+  async addLogs(logs) {
+    const logDocuments = logs.map((log) => {
+      return new LogModel({
+        timestamp: log.timestamp,
+        containerId: log.containerId,
+        log: log.log,
+      });
+    });
+    logDocuments.forEach(async (log) => {
+      try {
+        log.save();
+      } catch (error) {
+        try {
+          log.findOneAndUpdate({
+            containerId: log.containerId,
+            timestamp: log.timestamp,
+          });
+        } catch (error) {
+          console.log(
+            `\ncould not save container:${log.containerId} timestamp:${log.timestamp}`
+          );
+        }
+      }
+    });
   }
 
-  async addLogs(logs) {
-    try {
-      const logDocuments = logs.map((log) => {
-        return new LogModel({
-          containerId: log.containerId,
-          log: log.log,
-          timestamp: log.timestamp,
-        });
-      });
-      await LogModel.insertMany(logDocuments, { ordered: false });
-    } catch (error) {
-    }
-  }
   async getLogs(containerId, startDate, endDate) {
-    if (startDate === undefined) {
-      startDate = 0;
-    }
-    if (endDate === undefined) {
-      endDate = new Date().getTime();
-    }
     try {
-      const containerLogs = await LogModel.find({
+      let containerLogs = await LogModel.find({
         containerId: containerId,
-        timestamp: { $gte: startDate, $lte: endDate },
-      });
+      }).exec()
+      containerLogs=containerLogs.map((log)=>{
+         if(log.timestamp>=startDate && log.timestamp<=endDate){
+          return log;
+         }
+      })
+      containerLogs=containerLogs.filter((log)=>{return (log!=undefined)});
       return containerLogs;
     } catch (error) {
-      throw error//handled by ContainerManager.retrieveLogs;
+      console.log(error); //handled by ContainerManager.retrieveLogs;
     }
   }
 }

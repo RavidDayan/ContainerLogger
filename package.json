@@ -2,7 +2,7 @@
   "name": "container_logger_service",
   "version": "1.0.0",
   "description": "service that tracks containers logs and stores them",
-  "main": "index.js",
+  "main": "serviceCli.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

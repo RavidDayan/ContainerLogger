@@ -2,27 +2,42 @@ const containerLogger = require("./ContainerManager");
 const yargs = require("yargs");
 const { dbUrl } = require("./config");
 let logger;
+const customUsage = `
+Custom help message:
+---------------------
+exit - Stops the container logger service
+show-a - Show all running containers on machine
+show-l - Show all listened containers on machine
+attach <id> - Listen to container logs by ID
+detach <id> - Stop listening to container logs by ID
+log <id> [startDate] [endDate] - Print container logs by date
+
+Log command usage:
+---------------------
+log <id> - Print all logs for the specified container ID from the beginning.
+log <id> <startDate> - Print logs for the specified container ID from the provided start date to the current date.
+log <id> <startDate> <endDate> - Print logs for the specified container ID within the provided date range.
+---------------------
+`;
 
 const argv = yargs;
 
-const startService = () => {
-  logger = new containerLogger(dbUrl);
-  logger.startService();
-};
+// Handle help event exiting
+yargs.wrap(null).exitProcess(false);
+
+
 const addContainer = (containerId) => {
   logger.attachToContainer(containerId);
 };
 const removeContainer = (containerId) => {
   logger.detachContainer(containerId);
 };
-const showContainerLog = (containerId) => {
-  logger.retrieveLogs(containerId);
+const showContainerLog = (containerId, startDate, endDate) => {
+  logger.retrieveLogs(containerId, startDate, endDate);
 };
-//done
 const showAllContainers = () => {
   logger.getAllRunningContainers();
 };
-//done
 const showListenedContainers = () => {
   logger.getListenedContainers();
 };
@@ -31,20 +46,20 @@ const exit = async () => {
   process.exit();
 };
 
+// yargs.command({
+//   command: "start",
+//   describe: "starts the containger logger service",
+//   handler: () => {
+//     console.log("the service has started");
+//     startService();
+//   },
+// });
 yargs.command({
-  command: "start",
-  describe: "starts the containger logger service",
-  handler: () => {
-    console.log("the service has started");
-    startService();
-  },
-});
-yargs.command({
-  command: "stop",
+  command: "exit",
   describe: "stops the containger logger service",
   handler: () => {
-    exit();
     console.log("the service has stopped");
+    exit();
   },
 });
 yargs.command({
@@ -82,16 +97,21 @@ yargs.command({
   },
 });
 yargs.command({
-  command: "log <id>",
-  describe: "prints all containers logs",
+  command: "log <id> [startDate] [endDate]",
+  describe:
+    'prints all containers logs by date\ndate format: "yyyy-mm-dd hh-mm-ss"\nfor all logs: log <id> \nfor all logs from start to date: log log <id> 0 <endDate> ',
   handler: (argv) => {
     const containerId = argv.id;
-    showContainerLog(containerId);
-    console.log(`Container ${containerId} logs`);
+    let startDate = argv.startDate;
+    let endDate = argv.endDate;
+    showContainerLog(containerId, startDate, endDate);
   },
 });
 
-function serviceCli() {
+async function serviceCli() {
+
+  logger = new containerLogger();
+  await logger.startService();
   console.log(
     'Welcome to container logger service! Type a command or "exit" to quit.'
   );

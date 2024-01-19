@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 
 const logSchema = new mongoose.Schema({
   timestamp: {
-    type: Date,
-    default: Date.now,
+    type: Number,
+    default: new Date().getTime(),
     required: true
   },
   containerId: {
@@ -38,6 +38,10 @@ const containerManagerSchema = new mongoose.Schema({
   serviceState: {
     type: Boolean,
     default: false,
+  },
+  saveDate: {
+    type: Date,
+    default: 0,
   },
 });
 const ManagerModel = mongoose.model("ContainerManager", containerManagerSchema);

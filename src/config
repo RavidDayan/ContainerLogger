@@ -1,5 +1,14 @@
-const batchLimit = 50;
-const dbUrl =
+//mongodb pathway
+const dbPathway =
   "mongodb+srv://root:root@containerlogs.hspe8r3.mongodb.net/Logs?retryWrites=true&w=majority";
   
-module.exports = { batchLimit, dbUrl };
+//amount of logs collected until inserting to to db
+const batchLimit = 50;
+
+//time influx gmt+2
+
+const influx= 2 * 60 * 60 * 1000;
+//time limit until inserting to collected logs to db in seconds
+const miliTimeLimit = 30; //enter here time in seconds
+const timeLimit = miliTimeLimit * 1000;
+module.exports = { batchLimit, dbPathway, timeLimit ,influx};

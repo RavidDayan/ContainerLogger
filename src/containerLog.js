@@ -1,7 +1,7 @@
 const Docker = require("dockerode");
 
 class ContainerLog {
-  constructor(containerId, data, err, end, manager) {
+  constructor(containerId, data, err, end, manager, since) {
     try {
       this.docker = new Docker();
       this.manager = manager;
@@ -11,7 +11,7 @@ class ContainerLog {
       this.end = end;
       this.container = this.docker.getContainer(containerId);
       this.logStream = null;
-      this.attachListeners();
+      this.attachListeners(since);
     } catch (error) {
       console.log(`container with id ${containerId} does not exist, try again`);
     }
@@ -24,24 +24,37 @@ class ContainerLog {
   }
   //wrapper functions to pass the container id to the event listner
   idDataWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.data(this.id, new Date().getTime(), logMessage);
+    let timestamp = data.substring(8, 38);
+    const unixTimestamp = new Date(timestamp).getTime();
+    let logmessage = data.substring(39);
+    this.data(this.id, unixTimestamp, logmessage);
   };
   idErrWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.err(this.id, new Date().getTime(), logMessage);
+    console.log(data);
+    let timestamp = data.substring(8, 38);
+    const unixTimestamp = new Date(timestamp).getTime();
+    let logmessage = data.substring(39);
+    this.data(this.id, unixTimestamp, logmessage);
   };
   idEndWrapper = (data) => {
-    const logMessage = this.processLogMessage(data);
-    this.end(this.id, new Date().getTime(), logMessage);
+    let timestamp = data.substring(8, 38);
+    const unixTimestamp = new Date(timestamp).getTime();
+    let logmessage = data.substring(39);
+    this.data(this.id, unixTimestamp, logmessage);
   };
-  async attachListeners() {
-    const currentTime = Math.floor(new Date().getTime() / 1000); // UNIX timestamp in seconds
+  async attachListeners(since) {
+    if (since === undefined) {
+      since = Math.floor(new Date().getTime()/1000);
+    }
+    else{
+      since =new Date(since).getTime()/1000;
+    }
     let stream = await this.container.logs({
       follow: true,
       stdout: true,
       stderr: true,
-      since: currentTime,
+      since: since,
+      timestamps: true,
     });
     stream.setEncoding("utf8");
     stream.on("data", this.idDataWrapper);
