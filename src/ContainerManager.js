@@ -598,7 +598,6 @@ class ContainerManager {
   }
 
   //print containers by attachment,id,name
-  //done
   printContainers(containers) {
     let headerSpace = " ".repeat(49);//spaces to fit header
     console.log(`\nATTACHED  CONTAINER ID ${headerSpace}    CONTAINER NAME`);
